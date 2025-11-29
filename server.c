@@ -1,127 +1,147 @@
-#include <stdio.h>      // 표준 입출력 (printf, perror)
-#include <stdlib.h>     // 표준 유틸리티 (exit)
-#include <string.h>     // 문자열 처리 (memset)
-#include <unistd.h>     // Unix 표준 (close, read, write)
-#include <arpa/inet.h>  // 인터넷 프로토콜 (inet_pton, ntohs)
-#include <sys/socket.h> // 소켓 통신 (socket, bind, listen, accept)
-#include <pthread.h>    // 멀티 쓰레드용 (pthread_create, pthread_detach)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <pthread.h>
+#include <ncurses.h> // TUI 라이브러리
 
-#define PORT 8080        // 서버가 클라이언트의 연결을 기다릴 포트 번호
-#define BUFFER_SIZE 1024 // 데이터 수신 버퍼 크기
+#define PORT 8080
+#define BUF_SIZE 1024
+#define MAX_CLIENTS 10 // 최대 접속 가능한 기계 수
 
-void *handle_client(void *);
+// [공유 데이터] 모든 스레드가 이 변수를 함께 씁니다.
+char machine_status[MAX_CLIENTS][BUF_SIZE]; // 각 기계의 상태 메시지 저장
+int active_clients[MAX_CLIENTS] = {0};      // 접속 여부 (0: 끊김, 1: 연결됨)
 
-int main()
-{
-    int server_fd, new_socket;           // server_fd: 서버 소켓 파일 디스크립터, new_socket: 클라이언트와 통신할 소켓
-    struct sockaddr_in address;          // 서버 주소 정보를 담을 구조체
-    int addrlen = sizeof(address), *new; // 주소 구조체 크기
-    pthread_t thread_ID;
+// [UI 스레드] 0.1초마다 공유 데이터를 읽어서 화면을 새로 그립니다.
+void *draw_ui_thread(void *arg) {
+    initscr();              // ncurses 시작
+    curs_set(0);            // 커서 숨김
+    noecho();               // 키 입력 화면 노출 방지
+    start_color();          // 색상 모드 시작
 
-    // 1. 소켓 생성: IPv4, TCP (SOCK_STREAM) 소켓을 만듭니다.
-    // server_fd = socket(AF_INET, SOCK_STREAM, 0)
-    // AF_INET: IPv4 인터넷 프로토콜
-    // SOCK_STREAM: 연결 지향형 소켓 (TCP)
-    // 0: 기본 프로토콜 (TCP의 경우)
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-        perror("소켓 생성 실패");
-        exit(EXIT_FAILURE);
-    }
+    // 색상 정의 (번호, 글자색, 배경색)
+    init_pair(1, COLOR_CYAN, COLOR_BLACK);  // 제목 (하늘색)
+    init_pair(2, COLOR_GREEN, COLOR_BLACK); // 연결됨 (초록색)
+    init_pair(3, COLOR_RED, COLOR_BLACK);   // 끊김 (빨간색)
 
-    int opt = 1; // 1 = True (켜겠다)
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
-    {
-        perror("서버 설정 변경 실패");
-        exit(1);
-    }
+    while (1) {
+        clear(); // 화면 지우기
 
-    // 서버 주소 설정
-    // address.sin_family: 주소 체계 (IPv4)
-    // address.sin_addr.s_addr: 서버 IP 주소 (INADDR_ANY는 모든 인터페이스의 IP를 사용)
-    // address.sin_port: 서버 포트 번호 (htons는 호스트 바이트 순서를 네트워크 바이트 순서로 변환)
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+        // 1. 제목 그리기
+        attron(COLOR_PAIR(1));
+        mvprintw(1, 2, "========================================");
+        mvprintw(2, 2, "   FACTORY MONITORING SYSTEM (v2.0)   ");
+        mvprintw(3, 2, "========================================");
+        attroff(COLOR_PAIR(1));
 
-    // 2. 소켓에 IP 주소와 포트 번호 할당 (bind)
-    // bind(server_fd, (struct sockaddr *)&address, addrlen)
-    // server_fd: 바인딩할 소켓
-    // (struct sockaddr *)&address: 바인딩할 주소 정보 (제네릭 소켓 주소 구조체로 형변환)
-    // addrlen: 주소 구조체의 크기
-    if (bind(server_fd, (struct sockaddr *)&address, addrlen) < 0)
-    {
-        perror("바인딩 실패");
-        exit(EXIT_FAILURE);
-    }
-
-    // 3. 클라이언트의 연결 요청을 기다림 (listen)
-    // listen(server_fd, 3)
-    // server_fd: 리슨할 소켓
-    // 3: 대기 큐의 최대 크기 (동시에 처리할 수 있는 연결 요청 수)
-    if (listen(server_fd, 3) < 0)
-    {
-        perror("리슨 실패");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("서버가 %d 포트에서 클라이언트 연결을 기다리는 중...\n", PORT);
-
-    while (1)
-    {
-        // 4. 클라이언트의 연결 요청 수락 (accept)
-        // 이 함수는 클라이언트가 연결을 요청할 때까지 블로킹됩니다.
-        // 연결이 수락되면, 클라이언트와 통신할 새로운 소켓 디스크립터를 반환합니다.
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
-        {
-            perror("연결 수락 실패");
-            exit(EXIT_FAILURE);
+        // 2. 기계 상태 목록 그리기
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            int row = 6 + i; // 6번째 줄부터 한 줄씩 출력
+            
+            if (active_clients[i]) {
+                // 접속된 경우
+                attron(COLOR_PAIR(2)); // 초록색
+                mvprintw(row, 2, "[Machine %d] Status: %s", i, machine_status[i]);
+                attroff(COLOR_PAIR(2));
+            } else {
+                // 접속 안 된 경우
+                attron(COLOR_PAIR(3)); // 빨간색
+                mvprintw(row, 2, "[Machine %d] Waiting for connection...", i);
+                attroff(COLOR_PAIR(3));
+            }
         }
-        printf("클라이언트 %d가 연결되었습니다.\n", new_socket);
+        
+        // 3. 안내 문구
+        mvprintw(20, 2, "Listening on Port %d...", PORT);
+        mvprintw(21, 2, "Press Ctrl+C to exit server.");
 
-        new = malloc(sizeof(int));
-        *new = new_socket;
-
-        // handle_client 함수를 실행하고, 인자로 new을 줍니다.
-        if (pthread_create(&thread_ID, NULL, handle_client, (void *)new) != 0)
-        {
-            perror("쓰레드 생성 실패!");
-            close(new_socket);
-            free(new);
-        }
-        //
-        pthread_detach(thread_ID);
+        refresh();      // 실제 화면 업데이트
+        usleep(100000); // 0.1초 휴식 (CPU 과부하 방지)
     }
 
-    // 6. 소켓 닫기
-    close(server_fd); // 서버 리스닝 소켓 닫기
-    printf("서버 종료.\n");
-    return 0;
+    endwin();
+    return NULL;
 }
 
-void *handle_client(void *new)
-{
-    char buffer[BUFFER_SIZE] = {0}; // 클라이언트로부터 데이터를 받을 버퍼
-    int new_socket = *(int *)new;
-    free(new);
+// [작업 스레드] 클라이언트와 1:1로 대화하며 데이터를 공유 메모리에 적습니다.
+void *handle_client(void *arg) {
+    int client_sock = *((int *)arg);
+    free(arg);
 
-    // 5. 클라이언트로부터 데이터 읽기 (read)
-    // new_socket: 클라이언트와 통신하는 소켓
-    // buffer: 데이터를 저장할 버퍼
-    // BUFFER_SIZE - 1: 버퍼 크기 (널 종료 문자를 위해 1바이트 남김)
-    while (1)
-    {
-        int valread = read(new_socket, buffer, BUFFER_SIZE - 1);
-        if (valread > 0)
-        {
-            buffer[valread] = '\0'; // 문자열 끝을 널 종료
-            printf("클라이언트 %d로부터 받은 메시지: %s", new_socket, buffer);
-        }
-        else
-        {
-            printf("오류가 발생했습니다. 클라이언트 %d로부터 통신을 끊겠습니다.\n", new_socket);
-            close(new_socket); // 클라이언트와 통신했던 소켓 닫기
-            break;
-        }
+    // 편의상 소켓 번호를 인덱스로 사용 (범위 넘어가면 0번으로)
+    int id = client_sock % MAX_CLIENTS; 
+    
+    // 접속 처리
+    active_clients[id] = 1;
+    snprintf(machine_status[id], BUF_SIZE, "Connected");
+
+    char buffer[BUF_SIZE];
+    int str_len;
+
+    while (1) {
+        memset(buffer, 0, BUF_SIZE);
+        str_len = read(client_sock, buffer, BUF_SIZE);
+
+        if (str_len <= 0) break; // 연결 종료
+        
+        // 개행 문자 제거 (화면 깨짐 방지)
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        // 받은 메시지를 공유 메모리에 업데이트 -> UI 스레드가 이걸 보고 그림
+        snprintf(machine_status[id], BUF_SIZE, "%s", buffer);
     }
+
+    // 연결 종료 처리
+    active_clients[id] = 0;
+    close(client_sock);
+    return NULL;
+}
+
+int main() {
+    int server_sock, client_sock;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_addr_size;
+    pthread_t t_id, ui_tid;
+
+    // 소켓 생성 및 설정
+    server_sock = socket(PF_INET, SOCK_STREAM, 0);
+    int opt = 1;
+    setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr.sin_port = htons(PORT);
+
+    if (bind(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+        perror("bind error"); exit(1);
+    }
+    if (listen(server_sock, 5) == -1) {
+        perror("listen error"); exit(1);
+    }
+
+    // [핵심] UI 스레드 별도 실행
+    pthread_create(&ui_tid, NULL, draw_ui_thread, NULL);
+    pthread_detach(ui_tid);
+
+    // 메인 스레드는 계속 접속만 받음
+    while (1) {
+        client_addr_size = sizeof(client_addr);
+        client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &client_addr_size);
+        
+        if (client_sock == -1) continue;
+
+        int *new_sock = (int *)malloc(sizeof(int));
+        *new_sock = client_sock;
+
+        // 클라이언트마다 작업 스레드 생성
+        pthread_create(&t_id, NULL, handle_client, (void *)new_sock);
+        pthread_detach(t_id);
+    }
+
+    close(server_sock);
+    return 0;
 }
