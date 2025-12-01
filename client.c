@@ -17,13 +17,15 @@ void *recv_thread(void *s) {
     char buffer[100];
     while (1) {
         int len = read(sock, buffer, sizeof(buffer)-1);
-        if (len <= 0) {
+        if (len <= 0) { //서버 연결 끊김
             printf("서버와 연결이 끊어졌습니다.\n");
-            exit(0);
+            kill(getpid(), SIGINT);
+            break;
         }
         buffer[len] = 0;
         printf("[Server]: %s\n", buffer); // 서버 명령 수신용 (나중에 사용)
     }
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {
