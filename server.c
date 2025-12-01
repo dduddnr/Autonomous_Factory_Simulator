@@ -15,6 +15,21 @@
 char machine_status[MAX_CLIENTS][BUF_SIZE]; // 각 기계의 상태 메시지 저장
 int active_clients[MAX_CLIENTS] = {0};      // 접속 여부 (0: 끊김, 1: 연결됨)
 
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+const char *SENSOR_IDS[MAX_CLIENTS] = { //ui에서 각 클라이언트가 특정 센서이므로 맞춤 프로토콜 필요 -> 센서마다 인덱스 고정 필요
+    "ARM01",    // index 0
+    "TEMP02",   // index 1
+    "BUTTON01", // index 2
+    "LED01",    // index 3
+    "sensor01", // index 4
+    "sensor02", // index 5
+    "sensor03", // index 6
+    "sensor04", // index 7
+    "sensor05", // index 8
+    "sensor06", // index 9
+};
+
 // [UI 스레드] 0.1초마다 공유 데이터를 읽어서 화면을 새로 그립니다.
 void *draw_ui_thread(void *arg) {
     initscr();              // ncurses 시작
@@ -24,8 +39,8 @@ void *draw_ui_thread(void *arg) {
 
     // 색상 정의 (번호, 글자색, 배경색)
     init_pair(1, COLOR_CYAN, COLOR_BLACK);  // 제목 (하늘색)
-    init_pair(2, COLOR_GREEN, COLOR_BLACK); // 연결됨 (초록색)
-    init_pair(3, COLOR_RED, COLOR_BLACK);   // 끊김 (빨간색)
+    init_pair(2, COLOR_GREEN, COLOR_BLACK); // 클라이언트 연결됨 (초록색)
+    init_pair(3, COLOR_RED, COLOR_BLACK);   // 클라이언트 끊김 (빨간색)
 
     while (1) {
         clear(); // 화면 지우기
@@ -37,6 +52,7 @@ void *draw_ui_thread(void *arg) {
         mvprintw(3, 2, "========================================");
         attroff(COLOR_PAIR(1));
 
+        pthread_mutex_lock(&lock);
         // 2. 기계 상태 목록 그리기
         for (int i = 0; i < MAX_CLIENTS; i++) {
             int row = 6 + i; // 6번째 줄부터 한 줄씩 출력
@@ -44,16 +60,17 @@ void *draw_ui_thread(void *arg) {
             if (active_clients[i]) {
                 // 접속된 경우
                 attron(COLOR_PAIR(2)); // 초록색
-                mvprintw(row, 2, "[Machine %d] Status: %s", i, machine_status[i]);
+                mvprintw(row, 2, "[Machine %s] Status: %s", SENSOR_IDS[i], machine_status[i]); //프로토콜 구체화 필요
                 attroff(COLOR_PAIR(2));
             } else {
                 // 접속 안 된 경우
                 attron(COLOR_PAIR(3)); // 빨간색
-                mvprintw(row, 2, "[Machine %d] Waiting for connection...", i);
+                mvprintw(row, 2, "[Machine %s] Waiting for connection...", SENSOR_IDS[i]); //프로토콜 구체화 필요
                 attroff(COLOR_PAIR(3));
             }
         }
-        
+        pthread_mutex_unlock(&lock);
+
         // 3. 안내 문구
         mvprintw(20, 2, "Listening on Port %d...", PORT);
         mvprintw(21, 2, "Press Ctrl+C to exit server.");
@@ -71,15 +88,10 @@ void *handle_client(void *arg) {
     int client_sock = *((int *)arg);
     free(arg);
 
-    // 편의상 소켓 번호를 인덱스로 사용 (범위 넘어가면 0번으로)
-    int id = client_sock % MAX_CLIENTS; 
-    
-    // 접속 처리
-    active_clients[id] = 1;
-    snprintf(machine_status[id], BUF_SIZE, "Connected");
-
     char buffer[BUF_SIZE];
     int str_len;
+    int id = -1; //초기화 (못 찾음 : -1)
+    int has_sent_msg = 0; //센서 ID 확인용 플래그
 
     while (1) {
         memset(buffer, 0, BUF_SIZE);
@@ -87,15 +99,52 @@ void *handle_client(void *arg) {
 
         if (str_len <= 0) break; // 연결 종료
         
-        // 개행 문자 제거 (화면 깨짐 방지)
-        buffer[strcspn(buffer, "\n")] = 0;
+        buffer[strcspn(buffer, "\n")] = 0; // 개행 문자 제거 (화면 깨짐 방지)
 
-        // 받은 메시지를 공유 메모리에 업데이트 -> UI 스레드가 이걸 보고 그림
+        if (id == -1) { //ui 상에서 아직 자리가 배정 안 됐다면
+            char temp_id[20]; 
+            sscanf(buffer, "%[^:]", temp_id); // 메시지에서 ':' 앞부분까지만 복사해서 temp_id에 저장
+
+            for(int i=0; i<MAX_CLIENTS; i++) { // 명단(SENSOR_IDS)을 탐색해 자리를 찾는다
+                if(SENSOR_IDS[i] != NULL && strcmp(temp_id, SENSOR_IDS[i]) == 0) {
+                    id = i; //자리를 찾음
+                    
+                    pthread_mutex_lock(&lock);
+                    active_clients[id] = 1; 
+                    pthread_mutex_unlock(&lock);
+                    break;
+                }
+            }
+
+            //ID 확인 결과에 따라 답장 보내기
+            if (id == -1) { 
+                printf("Unknown Sensor Rejected: %s\n", buffer); //존재하지 않는 센서 ID
+                char *msg = "DENIED";
+                write(client_sock, msg, strlen(msg));
+                break; // 루프 탈출 -> 연결 종료
+            } else {
+                if (!has_sent_msg) { //센서 ID 존재함 -> 승인 메시지 전송 (최초 1회만)
+                    pthread_mutex_lock(&lock);
+                    active_clients[id] = 1; 
+                    pthread_mutex_unlock(&lock);
+                    
+                    char *msg = "ACCEPTED";
+                    write(client_sock, msg, strlen(msg));
+                    has_sent_msg = 1;
+                }
+            }
+        }
+
+        pthread_mutex_lock(&lock);
         snprintf(machine_status[id], BUF_SIZE, "%s", buffer);
+        pthread_mutex_unlock(&lock);
     }
 
-    // 연결 종료 처리
-    active_clients[id] = 0;
+    if (id != -1) { //연결 종료 처리
+        pthread_mutex_lock(&lock);
+        active_clients[id] = 0; 
+        pthread_mutex_unlock(&lock);
+    }
     close(client_sock);
     return NULL;
 }
