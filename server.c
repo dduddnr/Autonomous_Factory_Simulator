@@ -10,6 +10,13 @@
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef USE_AUDIO
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+
+Mix_Music *Ambience = NULL, *Intro = NULL;
+Mix_Chunk *alert = NULL, *sent = NULL;
+#endif
 
 #define PORT 8080
 #define BUF_SIZE 1024
@@ -20,8 +27,8 @@
 char machine_status[MAX_CLIENTS][BUF_SIZE], time_buffer[BUF_SIZE],
     log_buffer[LOG_SIZE]; // 각 기계의 상태 메시지 저장
 int active_clients[MAX_CLIENTS] = {0}, client_sockss[MAX_CLIENTS],
-    client_error[MAX_CLIENTS] = {0},
-    log_fd = 0; // 접속 여부 (0: 끊김, 1: 연결됨)
+    client_error[MAX_CLIENTS] = {0}, log_fd = 0,
+    keep_running = 1; // 접속 여부 (0: 끊김, 1: 연결됨)
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -42,6 +49,27 @@ const char *SENSOR_IDS[MAX_CLIENTS] = {
     "sensor05", // index 8
     "sensor06", // index 9
 };
+
+#ifdef USE_AUDIO
+void init_audio() {
+
+  if (SDL_Init(SDL_INIT_AUDIO) < 0)
+    return;
+  if (Mix_OpenAudio(48000, MIX_DEFAULT_FORMAT, 2, 4096) < 0)
+    return;
+
+  Ambience = Mix_LoadMUS("Ambience.mp3");
+  Intro = Mix_LoadMUS("Intro.mp3");
+  alert = Mix_LoadWAV("Alert.wav");
+  sent = Mix_LoadWAV("Sent.wav");
+
+  Mix_VolumeMusic(64);
+  if (alert)
+    Mix_VolumeChunk(alert, 128);
+  if (sent)
+    Mix_VolumeChunk(sent, 32);
+}
+#endif
 
 void play_intro() {
   // 글자 읽기
@@ -66,20 +94,23 @@ void play_intro() {
   }
   fclose(f);
 
-  int float_cycle[8] = {0, 1, 1, 1, 0, -1, -1, -1}, add_pulse[10] = {0};
+  int float_cycle[8] = {0, 1, 1, 1, 0, -1, -1, -1}, add_pulse[11] = {0};
   int inner_timer1, inner_timer2, color;
   int base_color = 0;
-
-  // 인트로는 15초 동안 지속
-  for (int frame = 0; frame < 150; frame++) {
+#ifdef USE_AUDIO
+  if (Intro)
+    Mix_PlayMusic(Intro, 1);
+#endif
+  // 인트로는 10초 동안 지속
+  for (int frame = 0; frame < 100; frame++) {
     erase();
 
-    for (int k = 9; k >= 0; k--) {
+    for (int k = 10; k >= 0; k--) {
       if (k)
         add_pulse[k] = add_pulse[k - 1];
       else {
         if (frame % 32 == 0)
-          add_pulse[k] = 16;
+          add_pulse[k] = 8;
         else
           add_pulse[k] /= 2;
       }
@@ -89,17 +120,13 @@ void play_intro() {
     inner_timer2 = frame / 4 + 2;
 
     base_color =
-        (239 >= 232 + (inner_timer1 / 4)) ? 232 + (inner_timer1 / 4) : 239;
-
-    for (int k = 0; k < 10; k++) {
-      mvprintw(0, k * 2, "%d", add_pulse[k]);
-    }
+        (240 >= 232 + (inner_timer1 / 4)) ? 232 + (inner_timer1 / 4) : 240;
 
     // 글자 그리기
     for (int i = 0; i < 12; i++) {
       for (int j = 0; j < 163; j++) {
-        init_pair(10 + j / 8, base_color, COLOR_BLACK);
-        attron(COLOR_PAIR(10 + j / 8));
+        init_pair(10 + j / 16, base_color + add_pulse[j / 16], COLOR_BLACK);
+        attron(COLOR_PAIR(10 + j / 16));
 
         mvaddch(i + 4 + float_cycle[inner_timer2 % 8], j + 8, line1[i][j]);
         mvaddch(i + 18 + float_cycle[(inner_timer2 - 1) % 8], j + 8,
@@ -107,13 +134,16 @@ void play_intro() {
         mvaddch(i + 32 + float_cycle[(inner_timer2 - 2) % 8], j + 8,
                 line3[i][j]);
 
-        attroff(COLOR_PAIR(10 + j / 8));
+        attroff(COLOR_PAIR(10 + j / 16));
       }
     }
 
     refresh();
-    usleep(100000);
+    napms(100);
   }
+#ifdef USE_AUDIO
+  Mix_HaltMusic();
+#endif
   endwin();
   printf("\e[8;23;60t");
   fflush(stdout);
@@ -139,12 +169,12 @@ void send_command(char command[]) {
     if (active_clients[i]) {
       // 접속된 경우
       attron(COLOR_PAIR(4));
-      mvprintw(row, 2, "[Machine %s]", SENSOR_IDS[i]); 
+      mvprintw(row, 2, "[Machine %s]", SENSOR_IDS[i]);
       attroff(COLOR_PAIR(4));
     } else {
       // 접속 안 된 경우
-      attron(COLOR_PAIR(5));             // 회색
-      mvprintw(row, 2, "Not available"); 
+      attron(COLOR_PAIR(5)); // 회색
+      mvprintw(row, 2, "Not available");
       attroff(COLOR_PAIR(5));
     }
   }
@@ -185,6 +215,11 @@ void send_command(char command[]) {
           write(log_fd, log_buffer, strlen(log_buffer));
         } else {
           attron(COLOR_PAIR(2));
+#ifdef USE_AUDIO
+          if (sent) {
+            Mix_PlayChannel(-1, sent, 0);
+          }
+#endif
           mvprintw(6 + select, 2, "Successfully sent!");
           attroff(COLOR_PAIR(2));
 
@@ -195,7 +230,7 @@ void send_command(char command[]) {
 
         pthread_mutex_unlock(&lock);
         refresh();
-        sleep(1);
+        napms(1000);
         return;
       }
     }
@@ -207,11 +242,13 @@ void send_command(char command[]) {
 
 // [UI 스레드] 0.1초마다 공유 데이터를 읽어서 화면을 새로 그립니다.
 void *draw_ui_thread(void *arg) {
-  const char loading[4] = {'|', '/', '-', '\\'};
+  const char loading[4] = {'|', '/', '-', '\\'},
+             *logo = "FACTORY MONITORING SYSTEM";
   const int red_fade[] = {160, 124, 88, 52, 0, 0, 0, 0};
+  int move_bar[7] = {0};
   char command[32];
   int index = -1;
-  int global_timer = 0;
+  int global_timer = 0, mes_color = 2, logo_starts = 0, logo_pos = 0;
   memset(command, 0, sizeof(command));
   int ch;
   initscr();     // ncurses 시작
@@ -227,9 +264,16 @@ void *draw_ui_thread(void *arg) {
   init_pair(3, COLOR_RED, COLOR_BLACK);   // 클라이언트 끊김 (빨간색)
   init_pair(4, COLOR_YELLOW, COLOR_BLACK);
   init_pair(5, 240, COLOR_BLACK);
+  for (int i = 0; i < 5; i++) {
+    init_pair(90 + i, 243 - 2 * i, COLOR_BLACK);
+  }
   play_intro();
 
-  while (1) {
+#ifdef USE_AUDIO
+  if (Ambience && !Mix_PlayingMusic())
+    Mix_PlayMusic(Ambience, -1);
+#endif
+  while (keep_running) {
 
     // 커맨드 입력 처리
     while ((ch = getch()) != -1) {
@@ -252,13 +296,27 @@ void *draw_ui_thread(void *arg) {
       }
     }
 
+    if (global_timer % 2 == 0) {
+      for (int i = 0; i < 7; i++) {
+        if (move_bar[i] <= 1)
+          move_bar[i] = rand() % 4 + 2;
+        else
+          --move_bar[i];
+      }
+    }
+
     clear(); // 화면 지우기
     init_pair(9, COLOR_WHITE, red_fade[global_timer % 8]);
 
     // 1. 제목 그리기
     attron(COLOR_PAIR(1));
+    logo_starts = 49 - (global_timer % 64);
     mvprintw(1, 10, "========================================");
-    mvprintw(2, 10, "       FACTORY MONITORING SYSTEM      ");
+    for (int k = 0; k < 25; k++) {
+      logo_pos = logo_starts + k;
+      if ((logo_pos >= 10) && (logo_pos < 50))
+        mvaddch(2, logo_pos, logo[k]);
+    }
     mvprintw(3, 10, "========================================");
     attroff(COLOR_PAIR(1));
 
@@ -268,14 +326,14 @@ void *draw_ui_thread(void *arg) {
       int row = 6 + i; // 6번째 줄부터 한 줄씩 출력
 
       if (active_clients[i]) { // 접속된 경우
-        if (client_error[i])
-          attron(COLOR_PAIR(9));
-        else
-          attron(COLOR_PAIR(2)); // 초록색
+        if (client_error[i]) {
+          mes_color = 9;
+        } else
+          mes_color = 2;
+        attron(COLOR_PAIR(mes_color)); // 초록색
         mvprintw(row, 2, "[Machine %s] Status: %s", SENSOR_IDS[i],
                  machine_status[i]); // 프로토콜 구체화 필요
-        attroff(COLOR_PAIR(9));
-        attroff(COLOR_PAIR(2));
+        attroff(COLOR_PAIR(mes_color));
       } else {
         // 접속 안 된 경우
         attron(COLOR_PAIR(3)); // 빨간색
@@ -298,12 +356,49 @@ void *draw_ui_thread(void *arg) {
     mvprintw(21, 2, "Press Ctrl+C to exit server.");
     attroff(COLOR_PAIR(5));
 
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < move_bar[i]; j++) {
+        attron(COLOR_PAIR(90 + j));
+        mvaddch(21 - j, 44 + 2 * i, '#');
+        attroff(COLOR_PAIR(90 + j));
+      }
+    }
+
     refresh(); // 실제 화면 업데이트
     global_timer = (global_timer + 1) % 128;
-    usleep(100000); // 0.1초 휴식 (CPU 과부하 방지)
+    napms(100); // 0.1초 휴식 (CPU 과부하 방지)
   }
 
+  pthread_mutex_lock(&lock);
+
+  gettime_log();
+  snprintf(log_buffer, LOG_SIZE,
+           "[%s] [INFO] Server has been Ctrl^C'd. All the contents in the log "
+           "will be deleted "
+           "when the server is restarted.\n",
+           time_buffer);
+  write(log_fd, log_buffer, strlen(log_buffer));
+
+#ifdef USE_AUDIO
+  if (Ambience)
+    Mix_FreeMusic(Ambience);
+  if (Intro)
+    Mix_FreeMusic(Intro);
+  if (alert)
+    Mix_FreeChunk(alert);
+  if (sent)
+    Mix_FreeChunk(sent);
+
+  Mix_CloseAudio();
+  SDL_Quit();
+#endif
+
+  pthread_mutex_unlock(&lock);
+
   endwin();
+  close(log_fd);
+  signal(SIGINT, SIG_DFL);
+  kill(getpid(), SIGINT);
   return NULL;
 }
 
@@ -372,9 +467,14 @@ void *handle_client(void *arg) {
     // 멀티쓰레드 서버용 안전한 버전
     pthread_mutex_lock(&lock);
 
-    if (!strcmp("ERROR", message))
+    if (!strcmp("ERROR", message)) {
       client_error[id] = 1;
-    else
+#ifdef USE_AUDIO
+      if (alert) {
+        Mix_PlayChannel(-1, alert, 0);
+      }
+#endif
+    } else
       client_error[id] = 0;
 
     gettime_log();
@@ -402,23 +502,7 @@ void *handle_client(void *arg) {
   return NULL;
 }
 
-void server_crashed() {
-  pthread_mutex_lock(&lock);
-
-  gettime_log();
-  snprintf(log_buffer, LOG_SIZE,
-           "[%s] [INFO] Server has been Ctrl^C'd. All the contents in the log "
-           "will be deleted "
-           "when the server is restarted.\n",
-           time_buffer);
-  write(log_fd, log_buffer, strlen(log_buffer));
-
-  pthread_mutex_unlock(&lock);
-  endwin();
-  close(log_fd);
-  signal(SIGINT, SIG_DFL);
-  kill(getpid(), SIGINT);
-}
+void server_crashed() { keep_running = 0; }
 
 int main() {
   signal(SIGINT, server_crashed);
@@ -431,6 +515,10 @@ int main() {
     printf("Something's wrong with opening the log file.\n");
     exit(1);
   }
+#ifdef USE_AUDIO
+  init_audio();
+#endif
+  srand(time(NULL));
 
   // 소켓 생성 및 설정
   server_sock = socket(PF_INET, SOCK_STREAM, 0);
