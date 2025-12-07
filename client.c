@@ -199,7 +199,43 @@ void send_status(int sock, const char *id, const char *status) {
     printf("[SEND][%s] %s\n", id, status);
 }
 
+void *recv_thread(void *arg) {
+    int sock = *(int *)arg;
+    char buffer[256];
+
+    while (1) {
+        int len = read(sock, buffer, sizeof(buffer) - 1);
+
+        if (len <= 0) {
+            printf("\n[FATAL] Server disconnected.\n");
+            kill(getpid(), SIGINT); 
+            break; 
+        }
+
+        buffer[len] = 0;
+        printf("\n[COMMAND RECEIVED] Server says: %s\n", buffer);
+
+        if (strstr(buffer, "RESET") != NULL) {
+            printf(">> ⚠️ RESET command detected! Rebooting system state...\n");
+            set_led(0); 
+            usleep(500000);
+            set_led(1);
+        }
+    }
+    return NULL;
+}
+
+void cleanup_handler(int sig) {
+    printf("\n[SYSTEM] Cleaning up resources...\n");
+    set_led(0); // LED 끄기
+    printf("[SYSTEM] LED turned OFF.\n");
+    printf("[SYSTEM] Client terminated safely.\n");
+    exit(0);
+}
+
 int main(void) {
+    signal(SIGINT, cleanup_handler);
+
     printf("[INFO] Initializing GPIO (button & LED) via pinctrl...\n");
     init_gpio_shell();
 
@@ -213,6 +249,15 @@ int main(void) {
         printf("[FATAL] Failed to establish any connection.\n");
         return 1;
     }
+
+    pthread_t r_tid;
+    int ret = pthread_create(&r_tid, NULL, recv_thread, (void *)&sock_arm);
+    
+    if (ret != 0) {
+        perror("[ERROR] Failed to create receive thread");
+    }
+    
+    pthread_detach(r_tid);
 
     int is_emergency = 0;
     int led_state    = 1;

@@ -102,12 +102,12 @@ void send_command(char command[]) {
     if (active_clients[i]) {
       // 접속된 경우
       attron(COLOR_PAIR(4));
-      mvprintw(row, 2, "[Machine %s]", SENSOR_IDS[i]); // 프로토콜 구체화 필요
+      mvprintw(row, 2, "[Machine %s]", SENSOR_IDS[i]); 
       attroff(COLOR_PAIR(4));
     } else {
       // 접속 안 된 경우
       attron(COLOR_PAIR(5));             // 회색
-      mvprintw(row, 2, "Not available"); // 프로토콜 구체화 필요
+      mvprintw(row, 2, "Not available"); 
       attroff(COLOR_PAIR(5));
     }
   }
