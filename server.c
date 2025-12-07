@@ -44,36 +44,73 @@ const char *SENSOR_IDS[MAX_CLIENTS] = {
 };
 
 void play_intro() {
-  char buffer[40][165];
+  // 글자 읽기
+  char line1[12][165], line2[13][165], line3[12][165];
   FILE *f;
   if (!(f = fopen("intro.txt", "r"))) {
     return;
   }
-  int inner_timer1, inner_timer2;
-  int font_color = 0;
-  // 인트로 글자 읽기
-  for (int j = 0; j < 40; j++) {
-    fread(buffer[j], sizeof(char), 164, f);
-    buffer[j][164] = '\0';
+  for (int j = 0; j < 12; j++) {
+    fread(line1[j], sizeof(char), 164, f);
+    line1[j][164] = '\0';
+  }
+  fseek(f, 328, SEEK_CUR);
+  for (int j = 0; j < 13; j++) {
+    fread(line2[j], sizeof(char), 164, f);
+    line2[j][164] = '\0';
+  }
+  fseek(f, 164, SEEK_CUR);
+  for (int j = 0; j < 12; j++) {
+    fread(line3[j], sizeof(char), 164, f);
+    line3[j][164] = '\0';
   }
   fclose(f);
 
-  for (int i = 0; i < 150; i++) {
-    // 인트로 글자 색깔 설정
-    inner_timer1 = (i > 20) ? i - 20 : 0;
-    font_color =
-        (255 >= 232 + (inner_timer1 / 4)) ? 232 + (inner_timer1 / 4) : 255;
-    init_pair(10, font_color, COLOR_BLACK);
-    attron(COLOR_PAIR(10));
+  int float_cycle[8] = {0, 1, 1, 1, 0, -1, -1, -1}, add_pulse[10] = {0};
+  int inner_timer1, inner_timer2, color;
+  int base_color = 0;
 
-    // 인트로는 미완성 상태.
-    for (int i = 0; i < 40; i++) {
+  // 인트로는 15초 동안 지속
+  for (int frame = 0; frame < 150; frame++) {
+    erase();
+
+    for (int k = 9; k >= 0; k--) {
+      if (k)
+        add_pulse[k] = add_pulse[k - 1];
+      else {
+        if (frame % 32 == 0)
+          add_pulse[k] = 16;
+        else
+          add_pulse[k] /= 2;
+      }
+    }
+    // 글자 애니매이션 타이머 지정
+    inner_timer1 = (frame > 20) ? frame - 20 : 0;
+    inner_timer2 = frame / 4 + 2;
+
+    base_color =
+        (239 >= 232 + (inner_timer1 / 4)) ? 232 + (inner_timer1 / 4) : 239;
+
+    for (int k = 0; k < 10; k++) {
+      mvprintw(0, k * 2, "%d", add_pulse[k]);
+    }
+
+    // 글자 그리기
+    for (int i = 0; i < 12; i++) {
       for (int j = 0; j < 163; j++) {
-        mvaddch(i + 4, j + 8, buffer[i][j]);
+        init_pair(10 + j / 8, base_color, COLOR_BLACK);
+        attron(COLOR_PAIR(10 + j / 8));
+
+        mvaddch(i + 4 + float_cycle[inner_timer2 % 8], j + 8, line1[i][j]);
+        mvaddch(i + 18 + float_cycle[(inner_timer2 - 1) % 8], j + 8,
+                line2[i][j]);
+        mvaddch(i + 32 + float_cycle[(inner_timer2 - 2) % 8], j + 8,
+                line3[i][j]);
+
+        attroff(COLOR_PAIR(10 + j / 8));
       }
     }
 
-    attroff(COLOR_PAIR(10));
     refresh();
     usleep(100000);
   }
@@ -257,7 +294,9 @@ void *draw_ui_thread(void *arg) {
     for (int i = 0; i < (global_timer % 8) / 2; i++) {
       mvprintw(20, 24 + i, ".");
     }
+    attron(COLOR_PAIR(5));
     mvprintw(21, 2, "Press Ctrl+C to exit server.");
+    attroff(COLOR_PAIR(5));
 
     refresh(); // 실제 화면 업데이트
     global_timer = (global_timer + 1) % 128;

@@ -1,6 +1,1 @@
-[2025-12-05 10:47:22] [INFO] Server has started.
-[2025-12-05 10:47:40] [INFO] New client has tried to connect. Check the log right below for conformation.
-[2025-12-05 10:47:40] [MSG] From ARM01: Just Connected
-[2025-12-05 10:47:42] [MSG] From ARM01: ERROR
-[2025-12-05 10:47:47] [INFO] Client [ARM01] has been disconnected.
-[2025-12-05 10:47:56] [INFO] Server has been Ctrl^C'd. All the contents in the log will be deleted when the server is restarted.
+[2025-12-06 21:59:42] [INFO] Server has started.
