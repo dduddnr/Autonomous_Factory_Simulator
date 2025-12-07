@@ -216,7 +216,7 @@ void *recv_thread(void *arg) {
         printf("\n[COMMAND RECEIVED] Server says: %s\n", buffer);
 
         if (strstr(buffer, "RESET") != NULL) {
-            printf(">> ⚠️ RESET command detected! Rebooting system state...\n");
+            printf(">> RESET command detected! Rebooting system state...\n");
             set_led(0); 
             usleep(500000);
             set_led(1);
