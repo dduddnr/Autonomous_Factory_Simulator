@@ -18,7 +18,9 @@ TUI 기반 실시간 자율 공장 모니터링 시스템 (Team 16)
 
 # 📝 프로젝트 소개 (About The Project)
 이 프로젝트는 자율 공장의 중앙 관제 시스템을 시뮬레이션하는 시스템 프로그래밍 프로젝트입니다.
+
 AI 및 데이터 인프라의 핵심인 '대규모 데이터 실시간 수집 및 처리' 기능을 C언어와 시스템 콜(System Call)을 사용하여 구현했습니다. 
+
 관제 서버는 멀티스레드 환경에서 여러 센서(클라이언트)의 데이터를 동시에 수신하며 이를 TUI(Text User Interface) 대시보드에 실시간으로 시각화하고 로그를 기록합니다.
 
 ## 시스템 아키텍처 (System Architecture)
@@ -66,7 +68,7 @@ System Calls: socket, bind, listen, accept, open, write, read 등의 시스템 �
 
 ## 1. 전제 조건 (Prerequisites)
 
-이 프로그램은 Ncurses(TUI)와 SDL2(Audio Alert) 라이브러리를 사용합니다. 터미널에 다음 명령어를 입력하여 필요한 패키지를 설치하세요.
+이 프로그램은 ncurses(TUI)와 SDL2(Audio Alert) 라이브러리를 사용합니다. 터미널에 다음 명령어를 입력하여 필요한 패키지를 설치하세요.
 
 sudo apt-get update
 
@@ -79,15 +81,9 @@ sudo apt-get install gcc make libncurses5-dev libncursesw5-dev libsdl2-dev libsd
 
 1. Clone the repository
 
-git clone [https://github.com/your_username/repo_name.git](https://github.com/your_username/repo_name.git)
-
 2. Go to project folder
 
-cd repo_name
-
-3. Build (Includes Audio)
-
-make
+3. Build (Includes Audio) : make
 
 
 ⚠️ 문제 해결 (Troubleshooting):
@@ -98,6 +94,7 @@ Server
 gcc server.c -o server -lncurses -lpthread
 
 Client
+
 gcc client.c -o client -lncurses -lpthread
 
 
