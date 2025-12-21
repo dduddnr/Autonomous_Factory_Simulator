@@ -1,16 +1,11 @@
 <!-- PROJECT LOGO & TITLE -->
+
 <br />
 <div align="center">
-<a href="https://github.com/your_username/repo_name">
-<img src="https://www.google.com/search?q=https://cdn-icons-png.flaticon.com/512/3043/3043543.png" alt="Logo" width="80" height="80">
-</a>
 <h3 align="center">Real-time Autonomous Factory Dashboard</h3>
+
 <p align="center">
 TUI 기반 실시간 자율 공장 모니터링 시스템 (Team 16)
-<br />
-<br />
-<!-- DEMO LINK -->
-<a href="#-실행-usage"><strong>View Demo »</strong></a>
 </p>
 </div>
 <br />
