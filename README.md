@@ -96,8 +96,31 @@ gcc client.c -o client -lncurses -lpthread
 
 ## 3. 실행 (Usage)
 
+본 프로젝트는 라즈베리 파이(Raspberry Pi) 환경을 기준으로 개발되었으나 개발 편의를 위해 WSL(Windows Subsystem for Linux) 환경에서도 시뮬레이션이 가능하도록 설정이 필요합니다.
 
-Step 1. 관제 서버 실행
+WSL 환경에서 실행하기 전에 아래 [Step 0]의 과정을 반드시 먼저 수행해주세요.
+
+### Step 0. WSL 환경 사전 설정 (최초 1회 필수)
+
+PC(WSL)에는 라즈베리 파이와 달리 GPIO 핀을 제어하는 하드웨어가 없습니다. 따라서 코드 실행 시 발생하는 pinctrl not found 오류를 방지하기 위해 가짜(Dummy) 명령어를 생성해야 합니다.
+
+터미널에 다음 명령어들을 차례대로 복사하여 입력해 주세요.
+
+1. 가짜 pinctrl 스크립트 생성 (내용: #!/bin/bash)
+
+echo '#!/bin/bash' | sudo tee /usr/bin/pinctrl
+
+
+2. 스크립트 종료 코드 추가 (내용: exit 0 - 항상 성공으로 처리)
+
+echo 'exit 0' | sudo tee -a /usr/bin/pinctrl
+
+
+3. 실행 권한 부여
+
+sudo chmod +x /usr/bin/pinctrl
+
+### Step 1. 관제 서버 실행
 
 
 서버를 먼저 실행하여 대시보드를 띄웁니다.
@@ -107,7 +130,7 @@ Step 1. 관제 서버 실행
 
 
 
-Step 2. 센서 클라이언트 실행
+### Step 2. 센서 클라이언트 실행
 
 
 새로운 터미널 창을 열고 센서를 실행하여 데이터를 전송합니다. (여러 터미널에서 실행 가능)
@@ -116,7 +139,7 @@ Step 2. 센서 클라이언트 실행
 ./client
 
 
-Step 3. 종료
+### Step 3. 종료
 
 
 서버나 클라이언트 터미널에서 Ctrl + C 입력
