@@ -1,7 +1,7 @@
 CC = gcc
-CFLAGS = -Wall
-# 라이브러리 연결 (ncurses, pthread)
-LIBS = -lncurses -lpthread
+CFLAGS = -Wall -DUSE_AUDIO
+# ncurses, pthread, 그리고 SDL2(오디오) 라이브러리를 링크합니다.
+LIBS = -lncurses -lpthread -lSDL2 -lSDL2_mixer
 
 all: server client
 
