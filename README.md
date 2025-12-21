@@ -84,6 +84,17 @@ sudo apt-get install gcc make libncurses5-dev libncursesw5-dev libsdl2-dev libsd
 
 3. Build (Includes Audio) : make
 
+⚠️ 문제 해결 (Troubleshooting):
+만약 SDL2 오디오 라이브러리 문제로 빌드가 실패한다면, 아래 명령어로 오디오 기능을 제외하고 수동 컴파일하세요.
+
+Server
+
+-gcc server.c -o server -lncurses -lpthread
+
+Client
+
+-gcc client.c -o client -lncurses -lpthread
+
 
 # 🔌 하드웨어 구성 (Hardware Setup)
 본 프로젝트의 Client는 Raspberry Pi 5 환경에서 동작하며, GPIO와 커널 드라이버를 통해 하드웨어를 제어합니다. 아래 핀맵에 따라 회로를 구성하고 시스템 설정을 완료해야 합니다.
@@ -103,20 +114,6 @@ DHT11 센서 데이터를 커널 드라이버(`/sys/bus/iio/devices`)를 통해 
 1. **설정 파일 열기**
 터미널에서 아래 명령어를 입력하여 `config.txt` 파일을 엽니다.
    sudo nano /boot/firmware/config.txt
-   
-
-
-⚠️ 문제 해결 (Troubleshooting):
-만약 SDL2 오디오 라이브러리 문제로 빌드가 실패한다면, 아래 명령어로 오디오 기능을 제외하고 수동 컴파일하세요.
-
-Server
-
-gcc server.c -o server -lncurses -lpthread
-
-Client
-
-gcc client.c -o client -lncurses -lpthread
-
 
 
 ## 3. 실행 (Usage)
@@ -150,24 +147,63 @@ sudo chmod +x /usr/bin/pinctrl
 
 서버를 먼저 실행하여 대시보드를 띄웁니다.
 
-
 ./server
+
+확인: "FACTORY MONITORING SYSTEM" 로고와 함께 Waiting for connection... 화면이 나타납니다.
 
 
 
 ### Step 2. 센서 클라이언트 실행
 
 
-새로운 터미널 창을 열고 센서를 실행하여 데이터를 전송합니다. (여러 터미널에서 실행 가능)
+새로운 터미널 창을 열고 클라이언트를 실행합니다. 이 프로그램은 4개의 가상 장치(ARM01, TEMP02, BUTTON01, LED01)를 동시에 구동합니다.
+
+라즈베리 파이(GPIO 제어 권한 필요): sudo ./client
+
+WSL (시뮬레이션): ./client
+
+확인: 서버 대시보드의 [Machine ARM01], [TEMP02], [BUTTON01], [LED01] 상태바가 초록색으로 활성화됩니다.
 
 
-./client
+### Step 3. 핵심 기능 검증
 
 
-### Step 3. 종료
+서버와 클라이언트가 연결된 상태에서 다음 기능들을 테스트할 수 있습니다.
 
 
-서버나 클라이언트 터미널에서 Ctrl + C 입력
+1. 원격 장치 제어 (Remote Control)
+
+서버 터미널에서 RESET 입력 후 [Enter].
+
+방향키(↑/↓)로 클라이언트를 선택 후 [Enter].
+
+결과: 클라이언트 측 LED가 3회 깜빡이며 리부팅 시퀀스가 작동합니다.
+
+서버에서 입력한 명령어가 RESET이 아닐 경우에는 해당 클라이언트(센서) 터미널에 명령어를 출력합니다.
+
+
+2. 비상 정지 및 경보 (Emergency Stop)
+
+클라이언트(라즈베리 파이)의 **물리 버튼(GPIO 17)**을 누릅니다.
+
+결과: 서버 대시보드에 WARNING - INTERRUPT DETECTED! 경고가 표시되고, 현장의 LED가 즉시 꺼집니다.
+
+
+3. 로그 확인 (Logging)
+
+새 터미널을 열어 실시간 로그를 확인합니다.
+
+tail -f factory.log
+
+
+### Step 4. 종료
+
+
+서버나 클라이언트 터미널 어디서든 종료 신호를 입력하면 시스템이 안전하게 정지합니다.
+
+입력: Ctrl + C
+
+동작: 서버 종료 시 모든 클라이언트가 이를 감지하고 자동으로 안전 종료(Safe Shutdown) 되며 LED가 소등됩니다.
 
 
 
