@@ -190,7 +190,7 @@ WSL (시뮬레이션): ./client
 
 클라이언트(라즈베리 파이)의 **물리 버튼(GPIO 17)**을 누릅니다.
 
-결과: 서버 대시보드에 WARNING - INTERRUPT DETECTED! 경고가 표시되고, 현장의 LED가 즉시 꺼집니다.
+결과: 서버 대시보드에 WARNING - INTERRUPT DETECTED! 경고가 표시되고 현장의 LED가 즉시 꺼집니다.
 
 
 
