@@ -97,9 +97,9 @@ Client
 
 
 # 🔌 하드웨어 구성 (Hardware Setup)
-본 프로젝트의 Client는 Raspberry Pi 5 환경에서 동작하며, GPIO와 커널 드라이버를 통해 하드웨어를 제어합니다. 아래 핀맵에 따라 회로를 구성하고 시스템 설정을 완료해야 합니다.
+본 프로젝트의 Client는 Raspberry Pi 5 환경에서 동작하며 GPIO와 커널 드라이버를 통해 하드웨어를 제어합니다. 아래 핀맵에 따라 회로를 구성하고 시스템 설정을 완료해야 합니다.
 
-## 1. 회로 연결 (Pin Map)
+## HW_1. 회로 연결 (Pin Map)
 
 | 컴포넌트 (Component) | 핀 (Pin / BCM) | 연결 설명 (Connection) |
 
@@ -107,9 +107,9 @@ Client
 | **Button (Switch)** | **GPIO 17** | 한쪽은 GPIO 17, 다른 쪽은 3.3V에 연결*(Internal Pull-down 설정 사용)* |
 | **LED** | **GPIO 18** | Anode(+)는 GPIO 18, Cathode(-)는 GND*(저항 220Ω 직렬 연결 권장)* |
 
-## 2. 시스템 설정 (System Configuration) - 필수
+## HW_2. 시스템 설정 (System Configuration) - 필수
 
-DHT11 센서 데이터를 커널 드라이버(`/sys/bus/iio/devices`)를 통해 읽어오기 위해, 라즈베리 파이 부트 설정에 오버레이를 추가해야 합니다.
+DHT11 센서 데이터를 커널 드라이버(`/sys/bus/iio/devices`)를 통해 읽어오기 위해 라즈베리 파이 부트 설정에 오버레이를 추가해야 합니다.
 
 1. **설정 파일 열기**
 터미널에서 아래 명령어를 입력하여 `config.txt` 파일을 엽니다.
@@ -171,6 +171,7 @@ WSL (시뮬레이션): ./client
 서버와 클라이언트가 연결된 상태에서 다음 기능들을 테스트할 수 있습니다.
 
 
+
 1. 원격 장치 제어 (Remote Control)
 
 서버 터미널에서 RESET 입력 후 [Enter].
@@ -182,6 +183,7 @@ WSL (시뮬레이션): ./client
 서버에서 입력한 명령어가 RESET이 아닐 경우에는 해당 클라이언트(센서) 터미널에 명령어를 출력합니다.
 
 
+
 2. 비상 정지 및 경보 (Emergency Stop)
 
 클라이언트(라즈베리 파이)의 **물리 버튼(GPIO 17)**을 누릅니다.
@@ -189,11 +191,13 @@ WSL (시뮬레이션): ./client
 결과: 서버 대시보드에 WARNING - INTERRUPT DETECTED! 경고가 표시되고, 현장의 LED가 즉시 꺼집니다.
 
 
+
 3. 로그 확인 (Logging)
 
 새 터미널을 열어 실시간 로그를 확인합니다.
 
 tail -f factory.log
+
 
 
 ### Step 4. 종료
