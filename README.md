@@ -36,29 +36,29 @@ System Calls: socket, bind, listen, accept, open, write, read 등의 시스템 �
 # ✨ 주요 기능 (Key Features)
 제안서에 명시된 5가지 핵심 기능을 모두 구현했습니다.
 
-다중 센서 연결 수용 (Multi-Client Support)
+## 다중 센서 연결 수용 (Multi-Client Support)
 
--여러 대의 센서가 동시에 접속 가능하며, pthread를 이용해 각 센서별로 독립적인 통신을 유지합니다.
+여러 대의 센서가 동시에 접속 가능하며, pthread를 이용해 각 센서별로 독립적인 통신을 유지합니다.
 
-실시간 TUI 대시보드 (Real-time Visualization)
+## 실시간 TUI 대시보드 (Real-time Visualization)
 
--접속된 센서들의 상태를 ncurses 라이브러리를 통해 터미널 화면에 실시간으로 시각화합니다.
+접속된 센서들의 상태를 ncurses 라이브러리를 통해 터미널 화면에 실시간으로 시각화합니다.
 
--별도의 렌더링 스레드가 공유 데이터를 읽어 화면을 갱신합니다.
+별도의 렌더링 스레드가 공유 데이터를 읽어 화면을 갱신합니다.
 
-이벤트 로깅 (History Logging)
+## 이벤트 로깅 (History Logging)
 
--수신된 모든 데이터를 factory.log 파일에 영구적으로 기록합니다.
+수신된 모든 데이터를 factory.log 파일에 영구적으로 기록합니다.
 
--파일 접근 시 Mutex 동기화를 통해 데이터 무결성을 보장합니다.
+파일 접근 시 Mutex 동기화를 통해 데이터 무결성을 보장합니다.
 
-원격 장치 제어 (Bi-directional Communication)
+## 원격 장치 제어 (Bi-directional Communication)
 
--서버에서 특정 센서에게 RESET, LED ON 등의 제어 명령을 전송하는 양방향 통신을 지원합니다.
+서버에서 특정 센서에게 RESET, LED ON 등의 제어 명령을 전송하는 양방향 통신을 지원합니다.
 
-오류 실시간 경보 (Real-time Alerting)
+## 오류 실시간 경보 (Real-time Alerting)
 
--ERROR 상태 감지 시 화면 깜빡임 효과와 함께 경고음(SDL2)을 재생하여 관리자에게 즉각적인 알림을 제공합니다.
+ERROR 상태 감지 시 화면 깜빡임 효과와 함께 경고음(SDL2)을 재생하여 관리자에게 즉각적인 알림을 제공합니다.
 
 <br />
 <!-- GETTING STARTED -->
