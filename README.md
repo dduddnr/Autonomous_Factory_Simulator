@@ -25,7 +25,7 @@ Thread-per-Client 모델: accept() 후 클라이언트(센서)마다 별도의 W
 동시성 제어 (Concurrency Control): 여러 스레드가 공유 자원(TUI 데이터 구조체, 로그 파일)에 접근할 때 발생할 수 있는 경쟁 상태(Race Condition)를 방지하기 위해 Mutex를 사용하여 원자성(Atomicity)을 보장합니다.
 
 System Calls: socket, bind, listen, accept, open, write, read 등의 시스템 콜을 직접 사용하여 저수준 I/O를 제어합니다.
-<br />
+
 <!-- KEY FEATURES -->
 
 # ✨ 주요 기능 (Key Features)
@@ -55,7 +55,11 @@ System Calls: socket, bind, listen, accept, open, write, read 등의 시스템 �
 
 ERROR 상태 감지 시 화면 깜빡임 효과와 함께 경고음(SDL2)을 재생하여 관리자에게 즉각적인 알림을 제공합니다.
 
-<br />
+<데모 영상>
+
+1.  https://youtu.be/zjQvuDtMkI8?si=i59E9MxsYkm4PI0R
+2. https://youtu.be/5ia1xZpAyXI?si=47uz3IfdclxaRDse
+3. https://youtube.com/shorts/FbQkM-IymSo?si=fi4fPhLOZUB_cg6c
 <!-- GETTING STARTED -->
 
 # 🚀 빌드 및 실행 방법 (Build & Run)
@@ -79,6 +83,27 @@ sudo apt-get install gcc make libncurses5-dev libncursesw5-dev libsdl2-dev libsd
 2. Go to project folder
 
 3. Build (Includes Audio) : make
+
+
+# 🔌 하드웨어 구성 (Hardware Setup)
+본 프로젝트의 Client는 Raspberry Pi 5 환경에서 동작하며, GPIO와 커널 드라이버를 통해 하드웨어를 제어합니다. 아래 핀맵에 따라 회로를 구성하고 시스템 설정을 완료해야 합니다.
+
+## 1. 회로 연결 (Pin Map)
+
+| 컴포넌트 (Component) | 핀 (Pin / BCM) | 연결 설명 (Connection) |
+
+| **DHT11 (Temp/Humi)** | **GPIO 4** | Data Pin 연결 (VCC: 3.3V, GND: GND) |
+| **Button (Switch)** | **GPIO 17** | 한쪽은 GPIO 17, 다른 쪽은 3.3V에 연결*(Internal Pull-down 설정 사용)* |
+| **LED** | **GPIO 18** | Anode(+)는 GPIO 18, Cathode(-)는 GND*(저항 220Ω 직렬 연결 권장)* |
+
+## 2. 시스템 설정 (System Configuration) - 필수
+
+DHT11 센서 데이터를 커널 드라이버(`/sys/bus/iio/devices`)를 통해 읽어오기 위해, 라즈베리 파이 부트 설정에 오버레이를 추가해야 합니다.
+
+1. **설정 파일 열기**
+터미널에서 아래 명령어를 입력하여 `config.txt` 파일을 엽니다.
+   sudo nano /boot/firmware/config.txt
+   
 
 
 ⚠️ 문제 해결 (Troubleshooting):
@@ -144,7 +169,8 @@ sudo chmod +x /usr/bin/pinctrl
 
 서버나 클라이언트 터미널에서 Ctrl + C 입력
 
-<br />
+
+
 <!-- TEAM INFO -->
 
 # 👥 팀원 정보 (Team Info)
