@@ -172,7 +172,7 @@ WSL (시뮬레이션): ./client
 
 
 
-1. 원격 장치 제어 (Remote Control)
+#### 1. 원격 장치 제어 (Remote Control)
 
 서버 터미널에서 RESET 입력 후 [Enter].
 
@@ -184,7 +184,7 @@ WSL (시뮬레이션): ./client
 
 
 
-2. 비상 정지 및 경보 (Emergency Stop)
+#### 2. 비상 정지 및 경보 (Emergency Stop)
 
 클라이언트(라즈베리 파이)의 **물리 버튼(GPIO 17)**을 누릅니다.
 
@@ -192,7 +192,7 @@ WSL (시뮬레이션): ./client
 
 
 
-3. 로그 확인 (Logging)
+#### 3. 로그 확인 (Logging)
 
 새 터미널을 열어 실시간 로그를 확인합니다.
 
