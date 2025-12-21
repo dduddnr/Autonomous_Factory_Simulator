@@ -16,7 +16,8 @@
 #include <signal.h>
 #include <dirent.h>
 
-#define SERVER_IP "192.168.0.14"   // <-- change to your server PC IP if needed
+//#define SERVER_IP "192.168.0.14"   // <-- change to your server PC IP if needed "127.0.0.1"
+#define SERVER_IP "127.0.0.1"
 #define PORT      8080
 
 #define ID_ARM   "ARM01"

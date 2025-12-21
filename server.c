@@ -14,6 +14,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 
+void gettime_log();
+
 Mix_Music *Ambience = NULL, *Intro = NULL;
 Mix_Chunk *alert = NULL, *sent = NULL;
 #endif
