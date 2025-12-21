@@ -49,7 +49,9 @@ System Calls: socket, bind, listen, accept, open, write, read 등의 시스템 �
 
 ## 원격 장치 제어 (Bi-directional Communication)
 
-서버에서 특정 센서에게 RESET, LED ON 등의 제어 명령을 전송하는 양방향 통신을 지원합니다.
+서버에서 특정 센서에게 RESET, LED ON 등의 제어 명령을 전송합니다.
+
+서버나 클라이언트 중 하나에서 강제 종료시 서버와 클라이언트가 모두 종료되는 양방향 통신을 지원합니다.
 
 ## 오류 실시간 경보 (Real-time Alerting)
 
