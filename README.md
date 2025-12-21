@@ -13,6 +13,7 @@ TUI 기반 실시간 자율 공장 모니터링 시스템 (Team 16)
 <a href="#-실행-usage"><strong>View Demo »</strong></a>
 </p>
 </div>
+<br />
 <!-- ABOUT THE PROJECT -->
 📝 프로젝트 소개 (About The Project)
 이 프로젝트는 자율 공장의 중앙 관제 시스템을 시뮬레이션하는 시스템 프로그래밍 프로젝트입니다.
@@ -21,6 +22,7 @@ AI 및 데이터 인프라의 핵심인 '대규모 데이터 실시간 수집 �
 Thread-per-Client 모델: accept() 후 클라이언트(센서)마다 별도의 Worker Thread를 생성하여 1:1 통신을 수행합니다.
 동시성 제어 (Concurrency Control): 여러 스레드가 공유 자원(TUI 데이터 구조체, 로그 파일)에 접근할 때 발생할 수 있는 경쟁 상태(Race Condition)를 방지하기 위해 Mutex를 사용하여 원자성(Atomicity)을 보장합니다.
 System Calls: socket, bind, listen, accept, open, write, read 등의 시스템 콜을 직접 사용하여 저수준 I/O를 제어합니다.
+<br />
 <!-- KEY FEATURES -->
 ✨ 주요 기능 (Key Features)
 제안서에 명시된 5가지 핵심 기능을 모두 구현했습니다.
@@ -36,6 +38,7 @@ System Calls: socket, bind, listen, accept, open, write, read 등의 시스템 �
 서버에서 특정 센서에게 RESET, LED_ON 등의 제어 명령을 전송하는 양방향 통신을 지원합니다.
 오류 실시간 경보 (Real-time Alerting)
 'ERROR' 상태 감지 시 화면 깜빡임 효과와 함께 경고음(SDL2)을 재생하여 관리자에게 즉각적인 알림을 제공합니다.
+<br />
 <!-- GETTING STARTED -->
 🚀 빌드 및 실행 방법 (Build & Run)
 이 프로젝트를 로컬 환경(WSL/Ubuntu)에서 실행하기 위한 가이드입니다.
@@ -78,6 +81,7 @@ Step 2. 센서 클라이언트 실행
 
 Step 3. 종료
 서버나 클라이언트 터미널에서 Ctrl + C 입력
+<br />
 <!-- TEAM INFO -->
 👥 팀원 정보 (Team Info)
 Team 16
